@@ -190,8 +190,9 @@ export default function VideoHommageWizard({
   const [template, setTemplate] = useState("classique");
   const [musique, setMusique] = useState("piano-doux");
   const [texte, setTexte] = useState("");
-  const [status, setStatus] = useState<"idle" | "generating" | "done" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "previewing" | "generating" | "done" | "error">("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { playingId, toggle: toggleAudio } = useAudioPreview();
 
   const togglePhoto = (id: string) => {
@@ -200,18 +201,39 @@ export default function VideoHommageWizard({
     );
   };
 
+  const requestBody = () => JSON.stringify({
+    photoIds: selectedPhotos,
+    template,
+    musique,
+    texteOverlay: texte,
+  });
+
+  const handlePreview = async () => {
+    setStatus("previewing");
+    setPreviewUrl(null);
+    try {
+      const res = await fetch(`/api/memorial/${slug}/video-hommage/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBody(),
+      });
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      setStatus("idle");
+    } catch {
+      setStatus("error");
+    }
+  };
+
   const handleGenerate = async () => {
     setStatus("generating");
     try {
       const res = await fetch(`/api/memorial/${slug}/video-hommage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          photoIds: selectedPhotos,
-          template,
-          musique,
-          texteOverlay: texte,
-        }),
+        body: requestBody(),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -476,6 +498,16 @@ export default function VideoHommageWizard({
             </div>
           )}
 
+          {/* Aperçu rapide */}
+          {previewUrl && status !== "done" && (
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>
+                Aperçu rapide (basse qualité, {Math.min(3, selectedPhotos.length)} photos max) :
+              </p>
+              <video src={previewUrl} controls className="w-full" style={{ borderRadius: 10, maxHeight: 300, marginBottom: 8, border: "1px solid #eee" }} />
+            </div>
+          )}
+
           {status === "done" && videoUrl ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ background: "#f0fdf4", color: "#166534", borderRadius: 6, padding: "16px 20px", marginBottom: 16 }}>
@@ -495,7 +527,7 @@ export default function VideoHommageWizard({
               </div>
             </div>
           ) : (
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               <button
                 onClick={() => setStep(2)}
                 style={{ padding: "12px 28px", fontSize: 15, borderRadius: 6, border: "1px solid #ddd", background: "#fff", color: "#16234c", cursor: "pointer" }}
@@ -503,12 +535,24 @@ export default function VideoHommageWizard({
                 Retour
               </button>
               <button
-                onClick={handleGenerate}
-                disabled={status === "generating"}
-                className="btn-accent"
-                style={{ padding: "12px 28px", fontSize: 15, opacity: status === "generating" ? 0.7 : 1 }}
+                onClick={handlePreview}
+                disabled={status === "previewing" || status === "generating"}
+                style={{
+                  padding: "12px 28px", fontSize: 15, borderRadius: 6,
+                  border: "1px solid #F8A809", background: "#fff", color: "#F8A809",
+                  cursor: "pointer", fontWeight: 500,
+                  opacity: status === "previewing" ? 0.7 : 1,
+                }}
               >
-                {status === "generating" ? "Génération en cours..." : "Générer la vidéo"}
+                {status === "previewing" ? "Aperçu en cours..." : "Aperçu rapide"}
+              </button>
+              <button
+                onClick={handleGenerate}
+                disabled={status === "generating" || status === "previewing"}
+                className="btn-accent"
+                style={{ padding: "12px 28px", fontSize: 15, opacity: (status === "generating" || status === "previewing") ? 0.7 : 1 }}
+              >
+                {status === "generating" ? "Génération en cours..." : "Générer la vidéo HD"}
               </button>
             </div>
           )}
