@@ -5,4 +5,8 @@ node_modules
 .env.*
 .git
 *.docx
+*.md
+public/uploads
+public/audio/*.mp3
+CDC_Espace_Memorial_RocEclerc.docx
 PLAN_IMPLEMENTATION.md

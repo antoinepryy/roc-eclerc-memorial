@@ -1,48 +1,59 @@
+# syntax=docker/dockerfile:1
+
 FROM node:22-alpine AS base
+WORKDIR /app
 
-# --- Dependencies (cached separately) ---
+# --- Dependencies (maximally cached) ---
 FROM base AS deps
-WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
-# --- Build ---
-FROM base AS builder
-WORKDIR /app
+# --- Prisma generate (cached unless schema changes) ---
+FROM base AS prisma
 COPY --from=deps /app/node_modules ./node_modules
 COPY prisma ./prisma
 COPY prisma.config.ts ./prisma.config.ts
 RUN npx prisma generate
 
+# --- Build Next.js ---
+FROM base AS builder
+COPY --from=prisma /app/node_modules ./node_modules
+COPY --from=prisma /app/src/generated ./src/generated
 COPY . .
+
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="mysql://build:build@localhost:3306/build"
 ENV JWT_SECRET="build-time-placeholder"
-RUN npm run build
 
-# --- Production ---
-FROM base AS runner
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
+
+# --- Production image (minimal) ---
+FROM node:22-alpine AS runner
 WORKDIR /app
 
-# FFmpeg + fonts only in runner (not needed for build)
-RUN apk add --no-cache ffmpeg font-noto fontconfig
+RUN apk add --no-cache ffmpeg font-noto fontconfig && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    mkdir -p /app/public/uploads /app/public/audio && \
+    chown -R nextjs:nodejs /app/public
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Public assets
+# Public assets (images only, audio on S3)
 COPY --from=builder /app/public ./public
 
-# Standalone output
+# Standalone Next.js output
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Full node_modules (needed for Prisma CLI at startup)
+# Prisma (for migrations at startup)
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/src/generated ./src/generated
+COPY --from=prisma /app/src/generated ./src/generated
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
@@ -50,12 +61,7 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-RUN mkdir -p /app/public/uploads /app/public/audio && chown -R nextjs:nodejs /app/public/uploads /app/public/audio
-
 USER nextjs
-
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 
 CMD ["./entrypoint.sh"]
