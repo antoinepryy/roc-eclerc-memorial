@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { uploadToS3 } from "@/lib/s3";
 import { v4 as uuid } from "uuid";
 
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads", "memorial");
 const MAX_FILES = 20;
 const MAX_SIZE = 5 * 1024 * 1024; // 5 Mo
 
@@ -23,7 +21,6 @@ export async function POST(
     return NextResponse.json({ error: "Introuvable" }, { status: 404 });
   }
 
-  // Vérifier le nombre de photos existantes
   const existingCount = await prisma.media.count({
     where: { defuntId: defunt.id, type: "PHOTO" },
   });
@@ -42,10 +39,6 @@ export async function POST(
     );
   }
 
-  // Créer le dossier d'upload
-  const defuntDir = path.join(UPLOAD_DIR, slug);
-  await mkdir(defuntDir, { recursive: true });
-
   const photos = [];
 
   for (const file of files) {
@@ -54,17 +47,16 @@ export async function POST(
 
     const ext = file.name.split(".").pop() || "jpg";
     const filename = `${uuid()}.${ext}`;
-    const filepath = path.join(defuntDir, filename);
+    const key = `memorial/${slug}/${filename}`;
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    await writeFile(filepath, buffer);
+    const url = await uploadToS3(key, buffer, file.type);
 
-    const mediaUrl = `/uploads/memorial/${slug}/${filename}`;
     const created: { id: string; url: string } = await prisma.media.create({
       data: {
         defuntId: defunt.id,
         type: "PHOTO",
-        url: mediaUrl,
+        url,
         ordre: existingCount + photos.length,
       },
     });
