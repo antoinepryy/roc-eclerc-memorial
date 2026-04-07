@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ============================================================
+// DÉFUNTS / FICHES MÉMORIELLES
+// ============================================================
+
+model Defunt {
+  id             String   @id @default(uuid()) @db.VarChar(36)
+  slug           String   @unique @db.VarChar(255)
+  prenom         String   @db.VarChar(100)
+  nom            String   @db.VarChar(100)
+  dateNaissance  DateTime? @map("date_naissance")
+  dateDeces      DateTime  @map("date_deces")
+  photoUrl       String?   @map("photo_url") @db.VarChar(500)
+  texteAnnonce   String?   @map("texte_annonce") @db.Text
+  ceremonieLieu  String?   @map("ceremonie_lieu") @db.VarChar(255)
+  ceremonieDate  DateTime? @map("ceremonie_date")
+  ceremonieHeure String?   @map("ceremonie_heure") @db.VarChar(10)
+  statut         DefuntStatut @default(BROUILLON)
+  acces          DefuntAcces  @default(PUBLIC)
+  tokenFamille   String?   @unique @map("token_famille") @db.VarChar(255)
+  qrCodeUrl      String?   @map("qr_code_url") @db.VarChar(500)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  condoleances   Condoleance[]
+  medias         Media[]
+  videosHommage  VideoHommage[]
+  textesHommage  TexteHommage[]
+
+  @@map("defunts")
+}
+
+enum DefuntStatut {
+  BROUILLON
+  PUBLIE
+  ARCHIVE
+}
+
+enum DefuntAcces {
+  PUBLIC
+  PRIVE
+}
+
+// ============================================================
+// CONDOLÉANCES
+// ============================================================
+
+model Condoleance {
+  id          String             @id @default(uuid()) @db.VarChar(36)
+  defuntId    String             @map("defunt_id") @db.VarChar(36)
+  auteurNom   String             @map("auteur_nom") @db.VarChar(100)
+  auteurEmail String?            @map("auteur_email") @db.VarChar(255)
+  message     String             @db.Text
+  statut      CondoleanceStatut  @default(EN_ATTENTE)
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  defunt      Defunt             @relation(fields: [defuntId], references: [id], onDelete: Cascade)
+
+  @@map("condoleances")
+}
+
+enum CondoleanceStatut {
+  EN_ATTENTE
+  APPROUVE
+  REJETE
+}
+
+// ============================================================
+// MÉDIAS (photos galerie)
+// ============================================================
+
+model Media {
+  id        String    @id @default(uuid()) @db.VarChar(36)
+  defuntId  String    @map("defunt_id") @db.VarChar(36)
+  type      MediaType @default(PHOTO)
+  url       String    @db.VarChar(500)
+  caption   String?   @db.VarChar(255)
+  ordre     Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  defunt    Defunt    @relation(fields: [defuntId], references: [id], onDelete: Cascade)
+
+  @@map("medias")
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+// ============================================================
+// VIDÉOS HOMMAGE
+// ============================================================
+
+model VideoHommage {
+  id          String            @id @default(uuid()) @db.VarChar(36)
+  defuntId    String            @map("defunt_id") @db.VarChar(36)
+  theme       String            @db.VarChar(50)
+  musique     String            @db.VarChar(50)
+  texteOverlay String?          @map("texte_overlay") @db.Text
+  photoIds    Json              @map("photo_ids")
+  statut      VideoStatut       @default(EN_COURS)
+  videoUrl    String?           @map("video_url") @db.VarChar(500)
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  defunt      Defunt            @relation(fields: [defuntId], references: [id], onDelete: Cascade)
+
+  @@map("videos_hommage")
+}
+
+enum VideoStatut {
+  EN_COURS
+  TERMINE
+  ERREUR
+}
+
+// ============================================================
+// TEXTES HOMMAGE (IA)
+// ============================================================
+
+model TexteHommage {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  defuntId  String   @map("defunt_id") @db.VarChar(36)
+  contenu   String   @db.Text
+  tonalite  String?  @db.VarChar(50)
+  donnees   Json?
+  audioUrl  String?  @map("audio_url") @db.VarChar(500)
+  pdfUrl    String?  @map("pdf_url") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  defunt    Defunt   @relation(fields: [defuntId], references: [id], onDelete: Cascade)
+
+  @@map("textes_hommage")
+}
+
+// ============================================================
+// UTILISATEURS (admin agence)
+// ============================================================
+
+model Utilisateur {
+  id           String   @id @default(uuid()) @db.VarChar(36)
+  email        String   @unique @db.VarChar(255)
+  nom          String   @db.VarChar(100)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         Role     @default(AGENCE)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("utilisateurs")
+}
+
+enum Role {
+  AGENCE
+  ADMIN
+}

@@ -1,26 +1,27 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: #16234c;
+  --color-primary-dark: #1b284c;
+  --color-accent: #F8A809;
+  --color-accent-hover: #fdc309;
+  --color-body: #333333;
+  --color-white: #ffffff;
+  --font-sans: var(--font-poppins), "Poppins", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html { scroll-behavior: smooth; }
+body { color: var(--color-body); font-size: 16px; line-height: 1.8; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4 { color: #16234c; font-weight: 500; line-height: 1.4; }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.btn-accent {
+  display: inline-block; background: #F8A809; color: #fff; border: none; border-radius: 6px;
+  font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-decoration: none;
 }
+.btn-accent:hover { background: #fdc309; }
+.btn-primary {
+  display: inline-block; background: #16234c; color: #fff; border: none; border-radius: 6px;
+  font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-decoration: none;
+}
+.btn-primary:hover { background: #1b284c; }
+.accent-separator { width: 60px; height: 3px; background: #F8A809; border-radius: 2px; margin: 16px auto 28px; }

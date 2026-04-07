@@ -1,0 +1,8 @@
+node_modules
+.next
+.env
+.env.local
+.env.*
+.git
+*.docx
+PLAN_IMPLEMENTATION.md
