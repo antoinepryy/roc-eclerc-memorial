@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 type Photo = { id: string; url: string; caption: string | null };
+
+const S3_BASE = process.env.NEXT_PUBLIC_S3_MUSIC_URL || "";
 
 const TEMPLATES = [
   {
@@ -11,6 +13,7 @@ const TEMPLATES = [
     label: "Classique",
     description: "Sobre et élégant, transitions en fondu",
     color: "#16234c",
+    transition: "Fondu enchaîné",
     features: ["Fondu enchaîné", "Texte en bas", "Gradient sombre"],
   },
   {
@@ -18,6 +21,7 @@ const TEMPLATES = [
     label: "Sérénité",
     description: "Doux et apaisant, effet lumineux",
     color: "#5b8fb9",
+    transition: "Fondu blanc",
     features: ["Fondu blanc", "Texte centré", "Vignette douce"],
   },
   {
@@ -25,6 +29,7 @@ const TEMPLATES = [
     label: "Nature",
     description: "Tons chauds, glissement latéral",
     color: "#2d5016",
+    transition: "Glissement",
     features: ["Transition latérale", "Bordure dorée", "Vignette"],
   },
   {
@@ -32,6 +37,7 @@ const TEMPLATES = [
     label: "Cinématique",
     description: "Style film, barres noires, zoom lent",
     color: "#0a0a0a",
+    transition: "Fondu noir",
     features: ["Zoom Ken Burns", "Barres cinéma", "Fondu noir"],
   },
   {
@@ -39,6 +45,7 @@ const TEMPLATES = [
     label: "Lumière",
     description: "Lumineux et chaleureux, tons dorés",
     color: "#8B6914",
+    transition: "Fondu blanc",
     features: ["Fondu blanc", "Texte en haut", "Tons chauds"],
   },
   {
@@ -46,6 +53,7 @@ const TEMPLATES = [
     label: "Nuit étoilée",
     description: "Intime et recueilli, fond sombre",
     color: "#0a0a2e",
+    transition: "Glissement",
     features: ["Glissement latéral", "Bordure dorée", "Vignette"],
   },
   {
@@ -53,6 +61,7 @@ const TEMPLATES = [
     label: "Poésie",
     description: "Délicat et raffiné, rythme contemplatif",
     color: "#6b4c7a",
+    transition: "Dissolution",
     features: ["Dissolution douce", "Texte centré", "Rythme lent"],
   },
   {
@@ -60,6 +69,7 @@ const TEMPLATES = [
     label: "Océan",
     description: "Calme et profond, comme les vagues",
     color: "#1a4a5e",
+    transition: "Glissement",
     features: ["Glissement vague", "Zoom lent", "Gradient sombre"],
   },
   {
@@ -67,6 +77,7 @@ const TEMPLATES = [
     label: "Jardin secret",
     description: "Paisible et lumineux, douceur florale",
     color: "#4a6741",
+    transition: "Cercle",
     features: ["Ouverture circulaire", "Texte en haut", "Tons floraux"],
   },
   {
@@ -74,18 +85,98 @@ const TEMPLATES = [
     label: "Automne",
     description: "Chaleur des souvenirs, tons ambrés",
     color: "#8B4513",
+    transition: "Balayage",
     features: ["Transition balayage", "Bordure dorée", "Vignette chaude"],
   },
 ];
 
 const MUSIQUES = [
-  { id: "piano-doux", label: "Piano doux", duree: "3:20" },
-  { id: "cordes-apaisantes", label: "Cordes apaisantes", duree: "4:10" },
-  { id: "guitare-acoustique", label: "Guitare acoustique", duree: "3:45" },
-  { id: "orchestre-solennel", label: "Orchestre solennel", duree: "4:30" },
-  { id: "harpe-celeste", label: "Harpe céleste", duree: "3:55" },
-  { id: "ambient-nature", label: "Ambient nature", duree: "5:00" },
+  { id: "piano-doux", label: "Piano doux", description: "Piano cinématique doux et émouvant" },
+  { id: "cordes-apaisantes", label: "Cordes apaisantes", description: "Piano et cordes inspirantes" },
+  { id: "guitare-acoustique", label: "Guitare acoustique", description: "Guitare acoustique chaleureuse" },
+  { id: "orchestre-solennel", label: "Orchestre solennel", description: "Orchestral dramatique et solennel" },
+  { id: "harpe-celeste", label: "Harpe céleste", description: "Éthéré et céleste" },
+  { id: "ambient-nature", label: "Ambient nature", description: "Piano ambient atmosphérique" },
 ];
+
+function getMusicUrl(id: string) {
+  if (S3_BASE) return `${S3_BASE}/audio/${id}.mp3`;
+  return `/audio/${id}.mp3`;
+}
+
+// --- Audio Preview Hook ---
+function useAudioPreview() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+
+  const toggle = useCallback((id: string) => {
+    if (playingId === id) {
+      audioRef.current?.pause();
+      setPlayingId(null);
+      return;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    const audio = new Audio(getMusicUrl(id));
+    audio.volume = 0.4;
+    audio.onended = () => setPlayingId(null);
+    audio.play().catch(() => {});
+    audioRef.current = audio;
+    setPlayingId(id);
+  }, [playingId]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { audioRef.current?.pause(); };
+  }, []);
+
+  return { playingId, toggle };
+}
+
+// --- Template Preview Component ---
+function TemplatePreview({ color, photos }: { color: string; photos: Photo[] }) {
+  const [idx, setIdx] = useState(0);
+  const previewPhotos = photos.slice(0, 3);
+
+  useEffect(() => {
+    if (previewPhotos.length <= 1) return;
+    const interval = setInterval(() => {
+      setIdx((i) => (i + 1) % previewPhotos.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [previewPhotos.length]);
+
+  if (previewPhotos.length === 0) {
+    return (
+      <div style={{
+        width: "100%", height: 56, borderRadius: 6,
+        background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+      }} />
+    );
+  }
+
+  return (
+    <div style={{
+      width: "100%", height: 56, borderRadius: 6, overflow: "hidden",
+      position: "relative", background: color,
+    }}>
+      {previewPhotos.map((p, i) => (
+        <div key={p.id} style={{
+          position: "absolute", inset: 0,
+          opacity: i === idx ? 1 : 0,
+          transition: "opacity 1.5s ease-in-out",
+        }}>
+          <Image src={p.url} alt="" fill className="object-cover" sizes="200px" style={{ opacity: 0.7 }} />
+        </div>
+      ))}
+      <div style={{
+        position: "absolute", inset: 0,
+        background: `linear-gradient(to top, ${color}cc, transparent)`,
+      }} />
+    </div>
+  );
+}
 
 export default function VideoHommageWizard({
   slug,
@@ -101,6 +192,7 @@ export default function VideoHommageWizard({
   const [texte, setTexte] = useState("");
   const [status, setStatus] = useState<"idle" | "generating" | "done" | "error">("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const { playingId, toggle: toggleAudio } = useAudioPreview();
 
   const togglePhoto = (id: string) => {
     setSelectedPhotos((prev) =>
@@ -131,6 +223,7 @@ export default function VideoHommageWizard({
   };
 
   const selectedTemplate = TEMPLATES.find((t) => t.id === template);
+  const selectedPhotosData = photos.filter((p) => selectedPhotos.includes(p.id));
 
   return (
     <div>
@@ -140,16 +233,11 @@ export default function VideoHommageWizard({
           <div key={s} className="flex items-center gap-2">
             <div
               style={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
+                width: 32, height: 32, borderRadius: "50%",
                 background: step >= s ? "#F8A809" : "#eee",
                 color: step >= s ? "#fff" : "#999",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 14,
-                fontWeight: 600,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 14, fontWeight: 600,
               }}
             >
               {s}
@@ -183,13 +271,9 @@ export default function VideoHommageWizard({
                     key={photo.id}
                     onClick={() => togglePhoto(photo.id)}
                     style={{
-                      position: "relative",
-                      aspectRatio: "1",
-                      borderRadius: 8,
-                      overflow: "hidden",
+                      position: "relative", aspectRatio: "1", borderRadius: 8, overflow: "hidden",
                       border: selectedPhotos.includes(photo.id)
-                        ? "3px solid #F8A809"
-                        : "3px solid transparent",
+                        ? "3px solid #F8A809" : "3px solid transparent",
                       cursor: "pointer",
                     }}
                   >
@@ -237,43 +321,21 @@ export default function VideoHommageWizard({
                 key={t.id}
                 onClick={() => setTemplate(t.id)}
                 style={{
-                  padding: "16px 14px",
+                  padding: "12px 12px 14px",
                   borderRadius: 10,
                   border: template === t.id ? "2px solid #F8A809" : "2px solid #eee",
                   background: template === t.id ? "rgba(248,168,9,0.05)" : "#f9f9fb",
-                  cursor: "pointer",
-                  textAlign: "left",
+                  cursor: "pointer", textAlign: "left",
                 }}
               >
-                {/* Prévisualisation couleur */}
-                <div style={{
-                  width: "100%", height: 48, borderRadius: 6,
-                  background: `linear-gradient(135deg, ${t.color}, ${t.color}dd)`,
-                  marginBottom: 10, position: "relative", overflow: "hidden",
-                }}>
-                  {/* Petites barres simulant des photos */}
-                  <div style={{ position: "absolute", bottom: 4, left: 4, right: 4, display: "flex", gap: 2 }}>
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.3)", borderRadius: 2 }} />
-                    ))}
-                  </div>
-                  {template === t.id && (
-                    <div style={{
-                      position: "absolute", top: 4, right: 4,
-                      width: 20, height: 20, borderRadius: "50%",
-                      background: "#F8A809", color: "#fff",
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12,
-                    }}>
-                      ✓
-                    </div>
-                  )}
-                </div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "#16234c", marginBottom: 2 }}>{t.label}</p>
-                <p style={{ fontSize: 11, color: "#888", lineHeight: 1.4 }}>{t.description}</p>
+                <TemplatePreview color={t.color} photos={selectedPhotosData} />
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#16234c", marginTop: 8, marginBottom: 2 }}>{t.label}</p>
+                <p style={{ fontSize: 11, color: "#888", lineHeight: 1.3 }}>{t.description}</p>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {t.features.map((f) => (
                     <span key={f} style={{
-                      fontSize: 9, background: template === t.id ? "rgba(248,168,9,0.15)" : "#eee",
+                      fontSize: 9,
+                      background: template === t.id ? "rgba(248,168,9,0.15)" : "#eee",
                       color: template === t.id ? "#16234c" : "#999",
                       padding: "2px 6px", borderRadius: 4,
                     }}>
@@ -288,28 +350,65 @@ export default function VideoHommageWizard({
           <h3 style={{ fontSize: 15, fontWeight: 500, color: "#16234c", marginBottom: 10 }}>Musique de fond</h3>
           <div className="space-y-2 mb-6">
             {MUSIQUES.map((m) => (
-              <button
+              <div
                 key={m.id}
-                onClick={() => setMusique(m.id)}
-                className="w-full flex items-center justify-between"
                 style={{
-                  padding: "12px 16px",
+                  display: "flex", alignItems: "center", gap: 0,
                   borderRadius: 8,
                   border: musique === m.id ? "2px solid #F8A809" : "2px solid #eee",
                   background: musique === m.id ? "rgba(248,168,9,0.05)" : "#f9f9fb",
-                  cursor: "pointer",
+                  overflow: "hidden",
                 }}
               >
-                <div className="flex items-center gap-3">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill={musique === m.id ? "#F8A809" : "#ccc"} stroke="none">
-                    <path d="M9 18V5l12-2v13" />
-                    <circle cx="6" cy="18" r="3" />
-                    <circle cx="18" cy="16" r="3" />
-                  </svg>
-                  <span style={{ fontSize: 14, color: "#16234c" }}>{m.label}</span>
-                </div>
-                <span style={{ fontSize: 12, color: "#aaa" }}>{m.duree}</span>
-              </button>
+                {/* Play/Pause button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleAudio(m.id); }}
+                  style={{
+                    width: 48, minHeight: 56,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: playingId === m.id ? "#F8A809" : "transparent",
+                    border: "none", cursor: "pointer",
+                    transition: "background 0.2s",
+                    flexShrink: 0,
+                  }}
+                  title={playingId === m.id ? "Pause" : "Écouter un extrait"}
+                >
+                  {playingId === m.id ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                      <rect x="6" y="4" width="4" height="16" />
+                      <rect x="14" y="4" width="4" height="16" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill={musique === m.id ? "#F8A809" : "#aaa"}>
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Select track */}
+                <button
+                  onClick={() => setMusique(m.id)}
+                  className="flex-1 flex items-center justify-between"
+                  style={{
+                    padding: "12px 16px 12px 8px",
+                    cursor: "pointer", background: "none", border: "none",
+                    textAlign: "left",
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: 14, color: "#16234c", fontWeight: musique === m.id ? 600 : 400 }}>{m.label}</span>
+                    <span style={{ display: "block", fontSize: 11, color: "#aaa", marginTop: 1 }}>{m.description}</span>
+                  </div>
+                  {musique === m.id && (
+                    <div style={{
+                      width: 22, height: 22, borderRadius: "50%",
+                      background: "#F8A809", color: "#fff",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, flexShrink: 0,
+                    }}>✓</div>
+                  )}
+                </button>
+              </div>
             ))}
           </div>
 
