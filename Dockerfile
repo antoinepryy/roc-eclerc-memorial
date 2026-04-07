@@ -1,5 +1,5 @@
 FROM node:22-alpine AS base
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg font-noto font-noto-emoji ttf-freefont fontconfig
 
 # --- Dependencies ---
 FROM base AS deps

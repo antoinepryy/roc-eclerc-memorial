@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { renderVideoHommage, getMusicPath } from "@/lib/video-renderer";
-import { mkdir } from "fs/promises";
+import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
 function formatDateFr(date: Date | null | undefined): string {
@@ -61,17 +61,31 @@ export async function POST(
     },
   });
 
+  const tmpDir = path.join("/tmp", `video-${video.id}`);
+  await mkdir(tmpDir, { recursive: true });
+
   const videoFilename = `video-hommage-${video.id}.mp4`;
-  const videoDir = path.join(process.cwd(), "public", "uploads", slug);
-  const videoPath = path.join(videoDir, videoFilename);
-  const videoUrl = `/uploads/${slug}/${videoFilename}`;
+  const videoPath = path.join(tmpDir, videoFilename);
+  const videoUrl = `/api/memorial/${slug}/video-hommage/${video.id}`;
 
-  await mkdir(videoDir, { recursive: true });
+  // Télécharger les photos depuis S3 vers des fichiers temporaires
+  const photoLocalPaths: string[] = [];
+  for (let i = 0; i < medias.length; i++) {
+    const m = medias[i];
+    const localPath = path.join(tmpDir, `photo-${i}.jpg`);
 
-  // Résoudre les chemins locaux des photos
-  const photoLocalPaths = medias.map((m) =>
-    path.join(process.cwd(), "public", m.url)
-  );
+    if (m.url.startsWith("http")) {
+      const res = await fetch(m.url);
+      const buf = Buffer.from(await res.arrayBuffer());
+      await writeFile(localPath, buf);
+    } else {
+      // Fallback: fichier local
+      const fullPath = path.join(process.cwd(), "public", m.url);
+      const { copyFile } = await import("fs/promises");
+      await copyFile(fullPath, localPath);
+    }
+    photoLocalPaths.push(localPath);
+  }
 
   const fullName = `${defunt.prenom} ${defunt.nom}`;
   const dates = `${formatDateFr(defunt.dateNaissance)}${defunt.dateNaissance ? " — " : ""}${formatDateFr(defunt.dateDeces)}`;
@@ -91,7 +105,7 @@ export async function POST(
 
     await prisma.videoHommage.update({
       where: { id: video.id },
-      data: { statut: "TERMINE", videoUrl },
+      data: { statut: "TERMINE", videoUrl: videoPath },
     });
 
     return NextResponse.json({

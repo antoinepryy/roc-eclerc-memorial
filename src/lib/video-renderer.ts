@@ -121,7 +121,7 @@ export async function renderVideoHommage(options: RenderOptions): Promise<void> 
         : "h-50";
 
       filterParts.push(
-        `[video_raw]drawtext=text='${escaped}':` +
+        `[video_raw]drawtext=fontfile=/usr/share/fonts/noto/NotoSans-Regular.ttf:text='${escaped}':` +
         `fontsize=${tpl.textSize}:fontcolor=white:` +
         `x=(w-text_w)/2:y=${yPos}:` +
         `enable='between(t,${tpl.introDuration},${tpl.introDuration + totalPhotoDuration})':` +
@@ -176,9 +176,9 @@ async function createTitleImage(outputPath: string, nom: string, dates: string, 
   const subtitleText = tpl.id === "cinematique" ? "In Memoriam" : "Hommage";
 
   const filters = [
-    `drawtext=text='${escaped(nom)}':fontsize=${titleSize}:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2-30:shadowcolor=black:shadowx=2:shadowy=2`,
-    `drawtext=text='${escaped(dates)}':fontsize=24:fontcolor=${dateColor}:x=(w-text_w)/2:y=(h-text_h)/2+40`,
-    `drawtext=text='${subtitleText}':fontsize=18:fontcolor=0xF8A809:x=(w-text_w)/2:y=h-60`,
+    `drawtext=fontfile=/usr/share/fonts/noto/NotoSans-Regular.ttf:text='${escaped(nom)}':fontsize=${titleSize}:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2-30:shadowcolor=black:shadowx=2:shadowy=2`,
+    `drawtext=fontfile=/usr/share/fonts/noto/NotoSans-Regular.ttf:text='${escaped(dates)}':fontsize=24:fontcolor=${dateColor}:x=(w-text_w)/2:y=(h-text_h)/2+40`,
+    `drawtext=fontfile=/usr/share/fonts/noto/NotoSans-Regular.ttf:text='${subtitleText}':fontsize=18:fontcolor=0xF8A809:x=(w-text_w)/2:y=h-60`,
   ];
 
   if (tpl.borderStyle === "thin") {
@@ -196,8 +196,8 @@ async function createOutroImage(outputPath: string, tpl: VideoTemplate): Promise
   const bg = `0x${tpl.bgColor}`;
 
   const filters = [
-    `drawtext=text='Roc Eclerc Nancy':fontsize=36:fontcolor=0xF8A809:x=(w-text_w)/2:y=(h-text_h)/2-20:shadowcolor=black:shadowx=1:shadowy=1`,
-    `drawtext=text='La\\, pour vous':fontsize=20:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2+30`,
+    `drawtext=fontfile=/usr/share/fonts/noto/NotoSans-Regular.ttf:text='Roc Eclerc Nancy':fontsize=36:fontcolor=0xF8A809:x=(w-text_w)/2:y=(h-text_h)/2-20:shadowcolor=black:shadowx=1:shadowy=1`,
+    `drawtext=fontfile=/usr/share/fonts/noto/NotoSans-Regular.ttf:text='La\\, pour vous':fontsize=20:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2+30`,
   ];
 
   if (tpl.borderStyle === "thin") {
