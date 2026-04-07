@@ -11,6 +11,7 @@ type DefuntData = {
   nom: string;
   dateNaissance: string | null;
   dateDeces: string;
+  photoUrl: string | null;
   texteAnnonce: string | null;
   ceremonieLieu: string | null;
   ceremonieDate: string | null;
@@ -25,6 +26,7 @@ export default function EditMemorialPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [form, setForm] = useState<DefuntData | null>(null);
@@ -81,6 +83,26 @@ export default function EditMemorialPage() {
 
   const update = (field: string, value: string) => setForm((prev) => prev ? { ...prev, [field]: value } : prev);
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append("photo", file);
+      const res = await fetch(`/api/admin/memorial/${id}/photo`, { method: "POST", body: fd });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setForm((prev) => prev ? { ...prev, photoUrl: data.photoUrl } : prev);
+      setSuccess("Photo mise à jour");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch {
+      setError("Erreur lors de l'upload de la photo");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -107,6 +129,22 @@ export default function EditMemorialPage() {
       </div>
 
       <form onSubmit={handleSubmit} style={{ maxWidth: 600 }}>
+        {/* Photo de profil */}
+        <div style={{ background: "#fff", borderRadius: 10, padding: "28px 24px", border: "1px solid #eee", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: "#16234c", marginBottom: 16 }}>Photo de profil</h2>
+          <div className="flex items-center gap-4">
+            {form.photoUrl ? (
+              <img src={form.photoUrl} alt="Photo" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", border: "2px solid #eee" }} />
+            ) : (
+              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", color: "#aaa", fontSize: 28 }}>?</div>
+            )}
+            <label style={{ padding: "10px 16px", borderRadius: 6, background: "#16234c", color: "#fff", fontSize: 13, cursor: "pointer", opacity: uploadingPhoto ? 0.6 : 1 }}>
+              {uploadingPhoto ? "Upload..." : form.photoUrl ? "Changer la photo" : "Ajouter une photo"}
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+            </label>
+          </div>
+        </div>
+
         <div style={{ background: "#fff", borderRadius: 10, padding: "28px 24px", border: "1px solid #eee", marginBottom: 20 }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, color: "#16234c", marginBottom: 16 }}>Identité</h2>
 
