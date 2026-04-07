@@ -1,7 +1,6 @@
 FROM node:22-alpine AS base
-RUN apk add --no-cache ffmpeg font-noto font-noto-emoji ttf-freefont fontconfig
 
-# --- Dependencies ---
+# --- Dependencies (cached separately) ---
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -11,18 +10,22 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
+RUN npx prisma generate
 
+COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# Build-time dummy env vars (not used at runtime)
 ENV DATABASE_URL="mysql://build:build@localhost:3306/build"
 ENV JWT_SECRET="build-time-placeholder"
-RUN npx prisma generate
 RUN npm run build
 
 # --- Production ---
 FROM base AS runner
 WORKDIR /app
+
+# FFmpeg + fonts only in runner (not needed for build)
+RUN apk add --no-cache ffmpeg font-noto fontconfig
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -37,21 +40,17 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Full node_modules for Prisma CLI migrations at startup
+# Full node_modules (needed for Prisma CLI at startup)
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src/generated ./src/generated
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
-# Entrypoint script
+# Entrypoint
 COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# Uploads directory (will be mounted as volume)
-RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads
-
-# Audio files (for video rendering)
-RUN mkdir -p /app/public/audio && chown -R nextjs:nodejs /app/public/audio
+RUN mkdir -p /app/public/uploads /app/public/audio && chown -R nextjs:nodejs /app/public/uploads /app/public/audio
 
 USER nextjs
 
