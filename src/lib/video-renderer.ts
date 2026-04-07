@@ -218,10 +218,21 @@ async function createOutroImage(outputPath: string, tpl: VideoTemplate, res = "1
   await execAsync(cmd, { timeout: 15000 });
 }
 
-/** Download file from URL to local path */
+/** Rewrite a public S3 URL to internal if S3_INTERNAL_ENDPOINT is set */
+function toInternalUrl(url: string): string {
+  const internal = process.env.S3_INTERNAL_ENDPOINT;
+  const publicUrl = process.env.S3_PUBLIC_URL || process.env.S3_ENDPOINT || "";
+  if (internal && publicUrl && url.startsWith(publicUrl)) {
+    return url.replace(publicUrl, internal);
+  }
+  return url;
+}
+
+/** Download file from URL to local path (uses internal URL if available) */
 export async function downloadToFile(url: string, localPath: string): Promise<void> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to download ${url}: ${res.status}`);
+  const fetchUrl = toInternalUrl(url);
+  const res = await fetch(fetchUrl);
+  if (!res.ok) throw new Error(`Failed to download ${fetchUrl}: ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   await writeFile(localPath, buf);
 }
