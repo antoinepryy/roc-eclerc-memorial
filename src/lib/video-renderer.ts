@@ -168,7 +168,7 @@ async function createTitleImage(outputPath: string, nom: string, dates: string, 
   const f = fontOpt();
 
   const titleSize = tpl.id === "cinematique" ? 48 : 52;
-  const subtitle = tpl.id === "cinematique" ? "In Memoriam" : "Hommage";
+  const subtitle = "En souvenir";
 
   const filters = [
     `drawtext=${f}text='${esc(nom)}':fontsize=${titleSize}:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2-30:shadowcolor=black:shadowx=2:shadowy=2`,
@@ -190,7 +190,7 @@ async function createOutroImage(outputPath: string, tpl: VideoTemplate): Promise
 
   const filters = [
     `drawtext=${f}text='Roc Eclerc Nancy':fontsize=36:fontcolor=0xF8A809:x=(w-text_w)/2:y=(h-text_h)/2-20:shadowcolor=black:shadowx=1:shadowy=1`,
-    `drawtext=${f}text='Là\\, pour vous':fontsize=20:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2+30`,
+    `drawtext=${f}text='Avec vous\\, dans ces moments':fontsize=20:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2+30`,
   ];
 
   if (tpl.borderStyle === "thin") {
