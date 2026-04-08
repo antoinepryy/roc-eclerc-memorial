@@ -28,6 +28,8 @@ export default function EditMemorialPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingMusique, setUploadingMusique] = useState(false);
+  const [musiques, setMusiques] = useState<{ id: string; label: string; url: string }[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [form, setForm] = useState<DefuntData | null>(null);
@@ -43,6 +45,10 @@ export default function EditMemorialPage() {
           ceremonieDate: data.ceremonieDate ? data.ceremonieDate.slice(0, 10) : "",
         });
         setLoading(false);
+        // Charger les musiques custom
+        if (data.slug) {
+          fetch(`/api/memorial/${data.slug}/musique`).then(r => r.json()).then(setMusiques).catch(() => {});
+        }
       })
       .catch(() => {
         setError("Erreur de chargement");
@@ -83,6 +89,30 @@ export default function EditMemorialPage() {
   if (!form) return <p style={{ color: "#991b1b" }}>Fiche introuvable</p>;
 
   const update = (field: string, value: string) => setForm((prev) => prev ? { ...prev, [field]: value } : prev);
+
+  const handleMusiqueUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !form) return;
+    setUploadingMusique(true);
+    try {
+      const label = file.name.replace(/\.[^.]+$/, "").slice(0, 100);
+      const fd = new FormData();
+      fd.append("musique", file);
+      fd.append("label", label);
+      fd.append("source", "admin");
+      const res = await fetch(`/api/memorial/${form.slug}/musique`, { method: "POST", body: fd });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      const data = await res.json();
+      setMusiques((prev) => [data, ...prev]);
+      setSuccess("Musique ajoutée");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur upload musique");
+    } finally {
+      setUploadingMusique(false);
+      e.target.value = "";
+    }
+  };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -211,6 +241,30 @@ export default function EditMemorialPage() {
                 style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #ddd", fontSize: 15, outline: "none" }} />
             </div>
           </div>
+        </div>
+
+        {/* Musiques personnalisées */}
+        <div style={{ background: "#fff", borderRadius: 10, padding: "28px 24px", border: "1px solid #eee", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: "#16234c", marginBottom: 16 }}>Musiques personnalisées</h2>
+          <p style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>
+            Ajoutez des musiques qui seront proposées dans le créateur de vidéo hommage (max 5, 10 Mo chacune).
+          </p>
+          {musiques.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {musiques.map((m) => (
+                <div key={m.id} className="flex items-center gap-3" style={{ padding: "8px 12px", background: "#f9f9fb", borderRadius: 6, border: "1px solid #eee" }}>
+                  <audio src={m.url} controls style={{ height: 32, flex: 1 }} />
+                  <span style={{ fontSize: 13, color: "#16234c", minWidth: 80 }}>{m.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {musiques.length < 5 && (
+            <label style={{ display: "inline-block", padding: "10px 16px", borderRadius: 6, background: "#16234c", color: "#fff", fontSize: 13, cursor: "pointer", opacity: uploadingMusique ? 0.6 : 1 }}>
+              {uploadingMusique ? "Upload..." : "Ajouter une musique"}
+              <input type="file" accept="audio/*" style={{ display: "none" }} onChange={handleMusiqueUpload} disabled={uploadingMusique} />
+            </label>
+          )}
         </div>
 
         <div style={{ background: "#fff", borderRadius: 10, padding: "28px 24px", border: "1px solid #eee", marginBottom: 20 }}>

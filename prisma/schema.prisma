@@ -31,10 +31,11 @@ model Defunt {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  condoleances   Condoleance[]
-  medias         Media[]
-  videosHommage  VideoHommage[]
-  textesHommage  TexteHommage[]
+  condoleances    Condoleance[]
+  medias          Media[]
+  videosHommage   VideoHommage[]
+  textesHommage   TexteHommage[]
+  musiquesCustom  MusiqueCustom[]
 
   @@map("defunts")
 }
@@ -145,6 +146,27 @@ model TexteHommage {
   defunt    Defunt   @relation(fields: [defuntId], references: [id], onDelete: Cascade)
 
   @@map("textes_hommage")
+}
+
+// ============================================================
+// UTILISATEURS (admin agence)
+// ============================================================
+
+// ============================================================
+// MUSIQUES PERSONNALISÉES
+// ============================================================
+
+model MusiqueCustom {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  defuntId  String   @map("defunt_id") @db.VarChar(36)
+  label     String   @db.VarChar(100)
+  url       String   @db.VarChar(500)
+  source    String   @default("admin") @db.VarChar(20) // "admin" ou "visiteur"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  defunt    Defunt   @relation(fields: [defuntId], references: [id], onDelete: Cascade)
+
+  @@map("musiques_custom")
 }
 
 // ============================================================

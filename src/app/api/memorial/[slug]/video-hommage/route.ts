@@ -27,9 +27,9 @@ export async function POST(
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  const { photoIds, template, musique, texteOverlay } = body;
+  const { photoIds, template, musique, musiqueCustomUrl, texteOverlay } = body;
 
-  if (!photoIds?.length || !template || !musique) {
+  if (!photoIds?.length || !template || (!musique && !musiqueCustomUrl)) {
     return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
   }
   if (photoIds.length > 20) {
@@ -89,15 +89,15 @@ export async function POST(
       photoLocalPaths.push(localPath);
     }
 
-    // 2. Télécharger la musique depuis S3
+    // 2. Télécharger la musique (prédéfinie ou custom)
     let musicLocalPath: string | null = null;
     try {
-      const musicUrl = getMusicS3Url(musique);
+      const musicUrl = musiqueCustomUrl || getMusicS3Url(musique);
       musicLocalPath = path.join(workDir, "music.mp3");
       await downloadToFile(musicUrl, musicLocalPath);
-      console.log(`[video] Music downloaded: ${musique}`);
+      console.log(`[video] Music downloaded: ${musiqueCustomUrl ? "custom" : musique}`);
     } catch (e) {
-      console.warn(`[video] Music not available (${musique}), rendering without audio:`, e);
+      console.warn(`[video] Music not available, rendering without audio:`, e);
       musicLocalPath = null;
     }
 

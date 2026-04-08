@@ -109,7 +109,7 @@ function useAudioPreview() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
-  const toggle = useCallback((id: string) => {
+  const toggle = useCallback((id: string, customUrl?: string) => {
     if (playingId === id) {
       audioRef.current?.pause();
       setPlayingId(null);
@@ -118,7 +118,7 @@ function useAudioPreview() {
     if (audioRef.current) {
       audioRef.current.pause();
     }
-    const audio = new Audio(getMusicUrl(id));
+    const audio = new Audio(customUrl || getMusicUrl(id));
     audio.volume = 0.4;
     audio.onended = () => setPlayingId(null);
     audio.play().catch(() => {});
@@ -178,17 +178,24 @@ function TemplatePreview({ color, photos }: { color: string; photos: Photo[] }) 
   );
 }
 
+type MusiqueCustom = { id: string; label: string; url: string };
+
 export default function VideoHommageWizard({
   slug,
   photos,
+  musiquesCustom: initialCustom = [],
 }: {
   slug: string;
   photos: Photo[];
+  musiquesCustom?: MusiqueCustom[];
 }) {
   const [step, setStep] = useState(1);
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [template, setTemplate] = useState("classique");
   const [musique, setMusique] = useState("piano-doux");
+  const [musiqueCustomUrl, setMusiqueCustomUrl] = useState<string | null>(null);
+  const [customMusiques, setCustomMusiques] = useState<MusiqueCustom[]>(initialCustom);
+  const [uploadingMusique, setUploadingMusique] = useState(false);
   const [texte, setTexte] = useState("");
   const [status, setStatus] = useState<"idle" | "previewing" | "generating" | "done" | "error">("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -201,10 +208,44 @@ export default function VideoHommageWizard({
     );
   };
 
+  const selectPreset = (id: string) => {
+    setMusique(id);
+    setMusiqueCustomUrl(null);
+  };
+
+  const selectCustom = (m: MusiqueCustom) => {
+    setMusique("");
+    setMusiqueCustomUrl(m.url);
+  };
+
+  const handleMusiqueUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingMusique(true);
+    try {
+      const label = file.name.replace(/\.[^.]+$/, "").slice(0, 100);
+      const fd = new FormData();
+      fd.append("musique", file);
+      fd.append("label", label);
+      fd.append("source", "visiteur");
+      const res = await fetch(`/api/memorial/${slug}/musique`, { method: "POST", body: fd });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setCustomMusiques((prev) => [data, ...prev]);
+      selectCustom(data);
+    } catch {
+      // silently fail
+    } finally {
+      setUploadingMusique(false);
+      e.target.value = "";
+    }
+  };
+
   const requestBody = () => JSON.stringify({
     photoIds: selectedPhotos,
     template,
-    musique,
+    musique: musique || undefined,
+    musiqueCustomUrl: musiqueCustomUrl || undefined,
     texteOverlay: texte,
   });
 
@@ -409,7 +450,7 @@ export default function VideoHommageWizard({
 
                 {/* Select track */}
                 <button
-                  onClick={() => setMusique(m.id)}
+                  onClick={() => selectPreset(m.id)}
                   className="flex-1 flex items-center justify-between"
                   style={{
                     padding: "12px 16px 12px 8px",
@@ -432,6 +473,55 @@ export default function VideoHommageWizard({
                 </button>
               </div>
             ))}
+
+            {/* Musiques personnalisées */}
+            {customMusiques.length > 0 && (
+              <>
+                <p style={{ fontSize: 12, color: "#aaa", fontWeight: 500, textTransform: "uppercase", letterSpacing: 1, marginTop: 12, marginBottom: 6 }}>
+                  Musiques personnalisées
+                </p>
+                {customMusiques.map((m) => {
+                  const isSelected = musiqueCustomUrl === m.url;
+                  return (
+                    <div key={m.id} style={{
+                      display: "flex", alignItems: "center", gap: 0, borderRadius: 8,
+                      border: isSelected ? "2px solid #F8A809" : "2px solid #eee",
+                      background: isSelected ? "rgba(248,168,9,0.05)" : "#f9f9fb",
+                      overflow: "hidden",
+                    }}>
+                      <button onClick={(e) => { e.stopPropagation(); toggleAudio(m.id, m.url); }}
+                        style={{ width: 48, minHeight: 56, display: "flex", alignItems: "center", justifyContent: "center", background: playingId === m.id ? "#F8A809" : "transparent", border: "none", cursor: "pointer", flexShrink: 0 }}>
+                        {playingId === m.id ? (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                        ) : (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill={isSelected ? "#F8A809" : "#aaa"}><path d="M8 5v14l11-7z" /></svg>
+                        )}
+                      </button>
+                      <button onClick={() => selectCustom(m)} className="flex-1 flex items-center justify-between"
+                        style={{ padding: "12px 16px 12px 8px", cursor: "pointer", background: "none", border: "none", textAlign: "left" }}>
+                        <span style={{ fontSize: 14, color: "#16234c", fontWeight: isSelected ? 600 : 400 }}>{m.label}</span>
+                        {isSelected && <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#F8A809", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>✓</div>}
+                      </button>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Upload musique */}
+            <div style={{ marginTop: 8 }}>
+              <label style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "10px 16px", borderRadius: 8, border: "2px dashed #ddd",
+                fontSize: 13, color: "#888", cursor: "pointer",
+                opacity: uploadingMusique ? 0.6 : 1,
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                {uploadingMusique ? "Upload en cours..." : "Importer votre musique"}
+                <input type="file" accept="audio/*" style={{ display: "none" }} onChange={handleMusiqueUpload} disabled={uploadingMusique} />
+              </label>
+              <p style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>MP3 ou WAV, 10 Mo max</p>
+            </div>
           </div>
 
           <div className="flex gap-3">

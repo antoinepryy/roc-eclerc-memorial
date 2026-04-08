@@ -26,6 +26,12 @@ export default async function VideoHommagePage({ params }: Props) {
     select: { id: true, url: true, caption: true },
   });
 
+  const musiquesCustom = await prisma.musiqueCustom.findMany({
+    where: { defuntId: defunt.id },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, label: true, url: true },
+  });
+
   return (
     <>
       <section style={{ background: "#16234c", padding: "40px 0" }}>
@@ -44,6 +50,7 @@ export default async function VideoHommagePage({ params }: Props) {
           <VideoHommageWizard
             slug={defunt.slug}
             photos={medias}
+            musiquesCustom={musiquesCustom}
           />
         </div>
       </section>

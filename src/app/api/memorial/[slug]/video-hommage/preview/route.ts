@@ -26,9 +26,9 @@ export async function POST(
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  const { photoIds, template, musique, texteOverlay } = body;
+  const { photoIds, template, musique, musiqueCustomUrl, texteOverlay } = body;
 
-  if (!photoIds?.length || !template || !musique) {
+  if (!photoIds?.length || !template || (!musique && !musiqueCustomUrl)) {
     return NextResponse.json({ error: "Données manquantes" }, { status: 400 });
   }
 
@@ -69,8 +69,9 @@ export async function POST(
     // Télécharger la musique
     let musicLocalPath: string | null = null;
     try {
+      const musicUrl = musiqueCustomUrl || getMusicS3Url(musique);
       musicLocalPath = path.join(workDir, "music.mp3");
-      await downloadToFile(getMusicS3Url(musique), musicLocalPath);
+      await downloadToFile(musicUrl, musicLocalPath);
     } catch {
       musicLocalPath = null;
     }
