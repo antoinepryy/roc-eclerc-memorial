@@ -30,7 +30,10 @@ export async function renderVideoHommage(options: RenderOptions): Promise<void> 
   const tpl = getTemplate(templateId);
 
   // Preview: résolution réduite, timing raccourci, max 3 photos
-  const res = preview ? "640:360" : "1280:720";
+  const w = preview ? 640 : 1280;
+  const h = preview ? 360 : 720;
+  const res = `${w}:${h}`;       // for scale filter
+  const resX = `${w}x${h}`;      // for lavfi color/zoompan
   const fps = preview ? 15 : 25;
   const photoDur = preview ? 2.5 : tpl.photoDuration;
   const crossDur = preview ? 0.8 : tpl.crossfadeDuration;
@@ -44,11 +47,11 @@ export async function renderVideoHommage(options: RenderOptions): Promise<void> 
   try {
     // Écran titre
     const titlePath = path.join(tempDir, "title.png");
-    await createTitleImage(titlePath, defuntNom, defuntDates, tpl, res);
+    await createTitleImage(titlePath, defuntNom, defuntDates, tpl, resX);
 
     // Écran outro
     const outroPath = path.join(tempDir, "outro.png");
-    await createOutroImage(outroPath, tpl, res);
+    await createOutroImage(outroPath, tpl, resX);
 
     // Construire les inputs FFmpeg
     const inputs: string[] = [];
@@ -77,7 +80,7 @@ export async function renderVideoHommage(options: RenderOptions): Promise<void> 
       const isPhoto = i > 0 && i < totalInputs - 1;
 
       if (tpl.kenBurns && isPhoto && !preview) {
-        vf += `,zoompan=z='min(zoom+0.0008\\,1.15)':d=${photoDur * fps}:s=${res.replace(":", "x")}:fps=${fps}`;
+        vf += `,zoompan=z='min(zoom+0.0008\\,1.15)':d=${photoDur * fps}:s=${resX}:fps=${fps}`;
       }
       if (tpl.id === "cinematique" && isPhoto) {
         const barH = preview ? 30 : 60;
@@ -174,11 +177,11 @@ export async function renderVideoHommage(options: RenderOptions): Promise<void> 
   }
 }
 
-async function createTitleImage(outputPath: string, nom: string, dates: string, tpl: VideoTemplate, res = "1280:720"): Promise<void> {
+async function createTitleImage(outputPath: string, nom: string, dates: string, tpl: VideoTemplate, resX = "1280x720"): Promise<void> {
   const esc = (s: string) => s.replace(/'/g, "\u2019").replace(/:/g, "\\:");
   const bg = `0x${tpl.bgColor}`;
   const f = fontOpt();
-  const scale = res === "640:360" ? 0.5 : 1;
+  const scale = resX === "640x360" ? 0.5 : 1;
 
   const titleSize = Math.round((tpl.id === "cinematique" ? 48 : 52) * scale);
   const dateSize = Math.round(24 * scale);
@@ -195,14 +198,14 @@ async function createTitleImage(outputPath: string, nom: string, dates: string, 
     filters.push(`drawbox=x=${p}:y=${p}:w=iw-${p * 2}:h=ih-${p * 2}:color=0xF8A809:t=1`);
   }
 
-  const cmd = `ffmpeg -f lavfi -i "color=c=${bg}:s=${res}:d=1" -vf "${filters.join(",")}" -frames:v 1 -y "${outputPath}"`;
+  const cmd = `ffmpeg -f lavfi -i "color=c=${bg}:s=${resX}:d=1" -vf "${filters.join(",")}" -frames:v 1 -y "${outputPath}"`;
   await execAsync(cmd, { timeout: 15000 });
 }
 
-async function createOutroImage(outputPath: string, tpl: VideoTemplate, res = "1280:720"): Promise<void> {
+async function createOutroImage(outputPath: string, tpl: VideoTemplate, resX = "1280x720"): Promise<void> {
   const bg = `0x${tpl.bgColor}`;
   const f = fontOpt();
-  const scale = res === "640:360" ? 0.5 : 1;
+  const scale = resX === "640x360" ? 0.5 : 1;
 
   const filters = [
     `drawtext=${f}text='Roc Eclerc Nancy':fontsize=${Math.round(36 * scale)}:fontcolor=0xF8A809:x=(w-text_w)/2:y=(h-text_h)/2-${Math.round(20 * scale)}:shadowcolor=black:shadowx=1:shadowy=1`,
@@ -214,7 +217,7 @@ async function createOutroImage(outputPath: string, tpl: VideoTemplate, res = "1
     filters.push(`drawbox=x=${p}:y=${p}:w=iw-${p * 2}:h=ih-${p * 2}:color=0xF8A809:t=1`);
   }
 
-  const cmd = `ffmpeg -f lavfi -i "color=c=${bg}:s=${res}:d=1" -vf "${filters.join(",")}" -frames:v 1 -y "${outputPath}"`;
+  const cmd = `ffmpeg -f lavfi -i "color=c=${bg}:s=${resX}:d=1" -vf "${filters.join(",")}" -frames:v 1 -y "${outputPath}"`;
   await execAsync(cmd, { timeout: 15000 });
 }
 
