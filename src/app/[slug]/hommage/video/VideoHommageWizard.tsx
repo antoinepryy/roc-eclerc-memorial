@@ -521,6 +521,12 @@ export default function VideoHommageWizard({
                 <input type="file" accept="audio/*" style={{ display: "none" }} onChange={handleMusiqueUpload} disabled={uploadingMusique} />
               </label>
               <p style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>MP3 ou WAV, 10 Mo max</p>
+              <p style={{ fontSize: 10, color: "#bbb", marginTop: 4, lineHeight: 1.4 }}>
+                En important un fichier audio, vous certifiez disposer des droits
+                nécessaires pour son utilisation dans le cadre de cet hommage.
+                Roc Eclerc ne saurait être tenu responsable en cas de non-respect
+                des droits d&apos;auteur.
+              </p>
             </div>
           </div>
 

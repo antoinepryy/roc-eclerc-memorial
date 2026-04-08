@@ -265,6 +265,9 @@ export default function EditMemorialPage() {
               <input type="file" accept="audio/*" style={{ display: "none" }} onChange={handleMusiqueUpload} disabled={uploadingMusique} />
             </label>
           )}
+          <p style={{ fontSize: 11, color: "#aaa", marginTop: 8, lineHeight: 1.4 }}>
+            Assurez-vous de disposer des droits d&apos;utilisation pour chaque musique importée.
+          </p>
         </div>
 
         <div style={{ background: "#fff", borderRadius: 10, padding: "28px 24px", border: "1px solid #eee", marginBottom: 20 }}>
