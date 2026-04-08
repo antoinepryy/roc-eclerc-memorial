@@ -199,6 +199,7 @@ export default function VideoHommageWizard({
   const [texte, setTexte] = useState("");
   const [status, setStatus] = useState<"idle" | "previewing" | "generating" | "done" | "error">("idle");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoId, setVideoId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { playingId, toggle: toggleAudio } = useAudioPreview();
 
@@ -279,6 +280,7 @@ export default function VideoHommageWizard({
       if (!res.ok) throw new Error();
       const data = await res.json();
       setVideoUrl(data.videoUrl);
+      setVideoId(data.id);
       setStatus("done");
     } catch {
       setStatus("error");
@@ -610,15 +612,23 @@ export default function VideoHommageWizard({
                 Vidéo hommage créée avec succès !
               </div>
               <video src={videoUrl} controls className="w-full" style={{ borderRadius: 10, maxHeight: 400, marginBottom: 16 }} />
-              <div className="flex gap-3 justify-center">
-                <a href={videoUrl} download className="btn-accent" style={{ padding: "12px 24px", fontSize: 14 }}>
+              <div className="flex flex-wrap gap-3 justify-center mb-4">
+                <a href={videoUrl} download className="btn-accent" style={{ padding: "12px 24px", fontSize: 14, textDecoration: "none" }}>
                   Télécharger
                 </a>
+                {videoId && (
+                  <a
+                    href={`/${slug}/hommage/video/${videoId}`}
+                    style={{ padding: "12px 24px", fontSize: 14, borderRadius: 6, border: "1px solid #F8A809", color: "#F8A809", textDecoration: "none", fontWeight: 500 }}
+                  >
+                    Page de partage
+                  </a>
+                )}
                 <a
                   href={`/${slug}`}
                   style={{ padding: "12px 24px", fontSize: 14, borderRadius: 6, border: "1px solid #ddd", color: "#16234c", textDecoration: "none" }}
                 >
-                  Retour à l&apos;espace mémoriel
+                  Retour
                 </a>
               </div>
             </div>
