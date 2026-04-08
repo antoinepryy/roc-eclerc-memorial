@@ -27,6 +27,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     data: {
       prenom: body.prenom?.trim(),
       nom: body.nom?.trim(),
+      genre: body.genre === "HOMME" || body.genre === "FEMME" ? body.genre : null,
       dateNaissance: body.dateNaissance ? new Date(body.dateNaissance) : null,
       dateDeces: body.dateDeces ? new Date(body.dateDeces) : undefined,
       texteAnnonce: body.texteAnnonce?.trim() || null,

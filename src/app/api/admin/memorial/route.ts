@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { prenom, nom, dateNaissance, dateDeces, texteAnnonce, ceremonieLieu, ceremonieDate, ceremonieHeure, acces, statut } = body;
+  const { prenom, nom, genre, dateNaissance, dateDeces, texteAnnonce, ceremonieLieu, ceremonieDate, ceremonieHeure, acces, statut } = body;
 
   if (!prenom?.trim() || !nom?.trim() || !dateDeces) {
     return NextResponse.json({ error: "Prénom, nom et date de décès requis" }, { status: 400 });
@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       slug,
       prenom: prenom.trim(),
       nom: nom.trim(),
+      genre: genre === "HOMME" || genre === "FEMME" ? genre : null,
       dateNaissance: dateNaissance ? new Date(dateNaissance) : null,
       dateDeces: new Date(dateDeces),
       texteAnnonce: texteAnnonce?.trim() || null,

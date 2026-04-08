@@ -16,6 +16,7 @@ model Defunt {
   slug           String   @unique @db.VarChar(255)
   prenom         String   @db.VarChar(100)
   nom            String   @db.VarChar(100)
+  genre          DefuntGenre? @map("genre")
   dateNaissance  DateTime? @map("date_naissance")
   dateDeces      DateTime  @map("date_deces")
   photoUrl       String?   @map("photo_url") @db.VarChar(500)
@@ -42,6 +43,11 @@ enum DefuntStatut {
   BROUILLON
   PUBLIE
   ARCHIVE
+}
+
+enum DefuntGenre {
+  HOMME
+  FEMME
 }
 
 enum DefuntAcces {

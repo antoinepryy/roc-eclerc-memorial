@@ -10,6 +10,7 @@ export default function NouvelleMemorialPage() {
   const [form, setForm] = useState({
     prenom: "",
     nom: "",
+    genre: "",
     dateNaissance: "",
     dateDeces: "",
     texteAnnonce: "",
@@ -70,6 +71,16 @@ export default function NouvelleMemorialPage() {
               <input type="text" required value={form.nom} onChange={(e) => update("nom", e.target.value)}
                 style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #ddd", fontSize: 15, outline: "none" }} />
             </div>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", fontSize: 14, fontWeight: 500, color: "#16234c", marginBottom: 6 }}>Genre</label>
+            <select value={form.genre} onChange={(e) => update("genre", e.target.value)}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 6, border: "1px solid #ddd", fontSize: 15, outline: "none" }}>
+              <option value="">Non renseigné</option>
+              <option value="HOMME">Homme</option>
+              <option value="FEMME">Femme</option>
+            </select>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
