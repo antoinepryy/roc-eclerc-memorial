@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/app/.next/cache \
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-RUN apk add --no-cache ffmpeg font-noto fontconfig && \
+RUN apk add --no-cache curl ffmpeg font-noto fontconfig && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs && \
     mkdir -p /app/public/uploads /app/public/audio && \
